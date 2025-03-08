@@ -1,54 +1,161 @@
-# React + TypeScript + Vite
+# VariableText
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React component for safely replacing variables in text with styled elements.
 
-Currently, two official plugins are available:
+[![npm version](https://img.shields.io/npm/v/react-variable-text.svg)](https://www.npmjs.com/package/react-variable-text)
+[![license](https://img.shields.io/npm/l/react-variable-text.svg)](https://github.com/yourusername/react-variable-text/blob/main/LICENSE)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Problem
 
-## Expanding the ESLint configuration
+In React applications, especially games or content-heavy apps, you often need to:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Load text from configuration files
+2. Insert variables with custom styling
+3. Do this without using `dangerouslySetInnerHTML`
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+The standard approach of string concatenation or using `String.replace()` with HTML becomes problematic due to React's security features.
+
+## Solution
+
+`VariableText` provides a simple, declarative way to replace variables in text with React elements, avoiding sanitization issues completely.
+
+## Installation
+
+```bash
+npm install react-variable-text
+# or
+yarn add react-variable-text
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Basic Usage
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```jsx
+import VariableText from 'react-variable-text';
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+function WelcomeMessage() {
+  return (
+    <p>
+      <VariableText
+        text="Hello, {name}! Welcome to {game}."
+        variables={{
+          name: <span className="text-blue-500 font-bold">Player1</span>,
+          game: <span className="text-green-500">Adventure Quest</span>
+        }}
+      />
+    </p>
+  );
+}
 ```
+
+## Features
+
+- **Safe**: No `dangerouslySetInnerHTML`, no XSS vulnerabilities
+- **Flexible**: Replace variables with React elements, strings, or function results
+- **Customizable**: Style both the variables and the surrounding text
+- **Robust**: Handle missing variables gracefully
+
+## Props
+
+| Prop              | Type     | Description                                                      | Required |
+|-------------------|----------|------------------------------------------------------------------|----------|
+| `text`            | string   | Text containing variables in curly braces: `{variableName}`      | Yes      |
+| `variables`       | object   | Map of variable names to React elements, strings, or functions   | No       |
+| `defaultStyles`   | object   | Styles to apply to text segments                                 | No       |
+| `onMissingVariable` | function | Handler for undefined variables, receives name and returns JSX or string | No |
+
+## Advanced Examples
+
+### Dynamic Content Based on Game State
+
+```jsx
+const playerStats = ({hp, maxHp}) => {
+  // Change color based on HP percentage
+  const getHpElement = () => {
+    const percentage = (hp / maxHp) * 100;
+    
+    let colorClass = "text-green-500";
+    if (percentage < 30) {
+      colorClass = "text-red-500 font-bold";
+    } else if (percentage < 70) {
+      colorClass = "text-yellow-500";
+    }
+    
+    return <span className={colorClass}>{hp}</span>;
+  };
+  
+  return (
+    <VariableText 
+      text="HP: {currentHp}/{maxHp}"
+      variables={{
+        currentHp: getHpElement(),
+        maxHp: maxHp
+      }}
+    />
+  );
+};
+```
+
+### Multiple Styled Elements
+
+```jsx
+<VariableText
+  text="Level {level} {character} found a {rarity} {item}!"
+  variables={{
+    level: <span className="text-blue-300">5</span>,
+    character: <span className="text-green-400 font-bold">Wizard</span>,
+    rarity: <span className="text-purple-300">Legendary</span>,
+    item: <span className="text-yellow-300">Staff of Power</span>
+  }}
+  defaultStyles={{ color: 'white' }}
+/>
+```
+
+### Custom Handling for Missing Variables
+
+```jsx
+<VariableText
+  text="Welcome to {location}! Beware of {enemy}."
+  variables={{
+    location: <span className="font-bold">Dark Forest</span>
+    // enemy is missing
+  }}
+  onMissingVariable={(name) => (
+    <span className="bg-red-800 text-white px-1">
+      [missing: {name}]
+    </span>
+  )}
+/>
+```
+
+## Use with Localization
+
+`VariableText` works great with localization systems:
+
+```jsx
+import { useTranslation } from 'react-i18next';
+
+function LocalizedMessage() {
+  const { t } = useTranslation();
+  
+  return (
+    <VariableText
+      text={t('welcome.message')} // "Welcome, {name}! You have {count} messages."
+      variables={{
+        name: <span className="font-bold">John</span>,
+        count: <span className="text-blue-500">5</span>
+      }}
+    />
+  );
+}
+```
+
+## Performance Considerations
+
+For optimal performance:
+
+- Use React.memo for the parent component if VariableText is used in lists
+- For frequently changing text, memoize complex variable elements
+
+## License
+
+MIT
